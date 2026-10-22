@@ -46,6 +46,7 @@
   .sellos-demo { display: flex; justify-content: center; gap: 8px; margin: 0 0 26px; }
   .sellos-demo img { width: 30px; height: 30px; }
   .sellos-demo img.vacio { opacity: 0.22; filter: grayscale(1); }
+  .club { display: block; width: 100%; border-radius: 16px; margin: 0 0 24px; box-shadow: 0 10px 24px rgba(60, 30, 25, 0.12); }
 
   form { display: grid; gap: 14px; }
   label.campo { display: grid; gap: 6px; font-weight: 600; font-size: 15px; }
@@ -121,9 +122,10 @@
 
   <!-- Registro -->
   <section id="registro" hidden>
-    <h1>Tu tarjeta Carella</h1>
-    <p class="sub">Junta un sello en cada compra y llévate una galleta gratis.</p>
-    <div class="sellos-demo" aria-hidden="true">
+    <h1 id="titulo">Tu tarjeta Carella</h1>
+    <p class="sub" id="subtitulo">Junta un sello en cada compra y llévate una galleta gratis.</p>
+    <img class="club" id="banner-club" src="club.png" alt="The Carella Club" hidden>
+    <div class="sellos-demo" id="sellos-demo" aria-hidden="true">
       <img src="isotipo.svg" alt=""><img src="isotipo.svg" alt=""><img src="isotipo.svg" alt="">
       <img class="vacio" src="isotipo.svg" alt=""><img class="vacio" src="isotipo.svg" alt="">
       <img class="vacio" src="isotipo.svg" alt=""><img class="vacio" src="isotipo.svg" alt="">
@@ -139,7 +141,7 @@
       <label class="trampa" aria-hidden="true">Sitio <input type="text" name="sitio" tabindex="-1" autocomplete="off"></label>
       <label class="aviso">
         <input type="checkbox" name="acepta" required>
-        <span>Acepto que Carella use mi nombre y celular solo para mi tarjeta de sellos: llevar mis visitas, darme mis premios y avisarme de promociones. No los venden ni comparten, y puedo pedir que los borren cuando quiera en cualquier tienda.</span>
+        <span>Acepto que Carella use mi nombre y celular solo para mi tarjeta: llevar mis visitas, darme mis beneficios y avisarme de promociones. No los venden ni comparten, y puedo pedir que los borren cuando quiera en cualquier tienda.</span>
       </label>
       <p class="error" id="error" role="alert"></p>
       <button class="boton" id="enviar" type="submit">Quiero mi tarjeta</button>
@@ -185,8 +187,19 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
   const API = "https://nktrffehtlluiodmoqpl.supabase.co/functions/v1/wallet";
-  const GUARDADO = "carella_tarjeta";
+  // tarjeta.carella.mx → sellos; tarjeta.carella.mx/club (o ?programa=club) → The Carella Club.
+  const PROGRAMA = new URLSearchParams(location.search).get("programa") === "club" ? "club" : "sellos";
+  const GUARDADO = PROGRAMA === "club" ? "carella_club" : "carella_tarjeta";
   const $ = (id) => document.getElementById(id);
+  if (PROGRAMA === "club") {
+    document.title = "The Carella Club";
+    $("titulo").textContent = "Únete a The Carella Club";
+    $("subtitulo").textContent = "Precio especial en galletas sueltas cada vez que nos visites.";
+    $("banner-club").hidden = false;
+    $("sellos-demo").hidden = true;
+    $("enviar").textContent = "Unirme al club";
+    $("existe").textContent = "Ese celular ya está registrado en Carella. Pide en caja que te sumen a The Carella Club.";
+  }
   const esApple = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
     (/Macintosh/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Edg/.test(navigator.userAgent));
@@ -219,7 +232,9 @@
       campo("t-izq", t.campos.izquierdo);
       campo("t-der", t.campos.derecho);
       if (t.logo) $("t-logo").src = t.logo; else $("t-logo").src = "logotipo.svg";
-      if (t.franja) { $("t-franja").src = t.franja; $("t-franja").hidden = false; } else { $("t-franja").hidden = true; }
+      // Sin imágenes publicadas todavía: el banner del club para su tarjeta.
+      const franja = t.franja || (t.mecanica === "descuento" ? "club.png" : null);
+      if (franja) { $("t-franja").src = franja; $("t-franja").hidden = false; } else { $("t-franja").hidden = true; }
       $("t-franja").alt = t.mecanica === "sellos" ? `${t.sellos} de ${t.meta} sellos` : t.programa;
       const qr = qrcode(0, "M");
       qr.addData(t.codigo);
@@ -262,7 +277,7 @@
       const r = await fetch(`${API}/registro`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, telefono, acepta: true, sitio: f.get("sitio") || "" }),
+        body: JSON.stringify({ nombre, telefono, acepta: true, programa: PROGRAMA, sitio: f.get("sitio") || "" }),
       });
       const datos = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(datos.error || "No pudimos crear tu tarjeta. Intenta de nuevo.");
@@ -271,13 +286,13 @@
         $("existe").hidden = false;
         return;
       }
-      history.replaceState(null, "", `?t=${encodeURIComponent(datos.token)}`);
+      history.replaceState(null, "", `${location.pathname}?t=${encodeURIComponent(datos.token)}`);
       await verTarjeta(datos.token);
     } catch (err) {
       $("error").textContent = err.message || "No pudimos crear tu tarjeta. Intenta de nuevo.";
     } finally {
       $("enviar").disabled = false;
-      $("enviar").textContent = "Quiero mi tarjeta";
+      $("enviar").textContent = PROGRAMA === "club" ? "Unirme al club" : "Quiero mi tarjeta";
     }
   });
 

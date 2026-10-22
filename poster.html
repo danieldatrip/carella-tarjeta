@@ -42,9 +42,10 @@
   <div class="hoja">
     <img class="logo" src="logotipo.svg" alt="carella">
     <div style="display:flex;flex-direction:column;align-items:center">
-      <h1>Junta sellos,<br><span>gana galletas</span></h1>
-      <p class="sub">Un sello en cada compra desde $80. Con 8, una galleta gratis.</p>
-      <div class="sellos" aria-hidden="true">
+      <h1 id="titulo">Junta sellos,<br><span>gana galletas</span></h1>
+      <p class="sub" id="sub">Un sello en cada compra desde $80. Con 8, una galleta gratis.</p>
+      <img id="club" src="club.png" alt="The Carella Club" style="display:none;width:5.4in;border-radius:0.2in;margin-top:0.22in">
+      <div class="sellos" id="sellos" aria-hidden="true">
         <img src="isotipo.svg" alt=""><img src="isotipo.svg" alt=""><img src="isotipo.svg" alt="">
         <img class="vacio" src="isotipo.svg" alt=""><img class="vacio" src="isotipo.svg" alt="">
         <img class="vacio" src="isotipo.svg" alt=""><img class="vacio" src="isotipo.svg" alt="">
@@ -58,16 +59,38 @@
     <div class="pasos">
       <div class="paso"><b>1</b><p>Escanea el código con la cámara de tu celular</p></div>
       <div class="paso"><b>2</b><p>Escribe tu nombre y tu celular</p></div>
-      <div class="paso"><b>3</b><p>Agrégala a Wallet y muéstrala al pagar</p></div>
+      <div class="paso"><b>3</b><p id="paso3">Agrégala a Wallet y muéstrala al pagar</p></div>
     </div>
-    <p class="pie"><strong>tarjeta.carella.mx</strong> · @carella.mx</p>
+    <p class="pie"><strong id="dominio">tarjeta.carella.mx</strong> · @carella.mx</p>
   </div>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
+  // poster.html → tarjeta de sellos; poster.html?programa=club → The Carella Club.
+  const club = new URLSearchParams(location.search).get("programa") === "club";
+  if (club) {
+    document.title = "Póster The Carella Club";
+    document.getElementById("titulo").innerHTML = "Únete al<br><span>Carella Club</span>";
+    document.getElementById("sub").textContent = "Precio especial en galletas sueltas cada vez que nos visites.";
+    document.getElementById("club").style.display = "block";
+    document.getElementById("sellos").style.display = "none";
+    document.getElementById("paso3").textContent = "Muestra tu tarjeta al pagar y obtén tu precio especial";
+    document.getElementById("dominio").textContent = "tarjeta.carella.mx/club";
+    // El banner ocupa el lugar de los sellos y algo más: se compacta para caber en carta.
+    document.getElementById("club").style.width = "4.4in";
+    document.getElementById("club").style.marginTop = "0.16in";
+    document.querySelector("h1").style.fontSize = "42pt";
+    document.querySelector(".logo").style.height = "0.65in";
+
+  }
   const qr = qrcode(0, "H");
-  qr.addData("https://tarjeta.carella.mx");
+  qr.addData(club ? "https://tarjeta.carella.mx/club" : "https://tarjeta.carella.mx");
   qr.make();
   document.getElementById("qr").innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+  if (club) {
+    const svg = document.querySelector(".qr svg");
+    svg.style.width = "2.6in";
+    svg.style.height = "2.6in";
+  }
 </script>
 </body>
 </html>
