@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tarjeta Carella</title>
+<meta name="description" content="Junta sellos en cada compra en Carella y llévate una galleta gratis.">
+<meta name="theme-color" content="#FAF6EE">
+<link rel="icon" href="isotipo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="logo.png">
+<!--
+  Página pública de la tarjeta de lealtad (QR del mostrador).
+  - Sin ?t=: formulario de registro → POST /registro de la función `wallet`.
+  - Con ?t=<token>: la tarjeta (franja, campos, QR) y el botón para Apple
+    Wallet; en Android, la misma página es la tarjeta.
+  Toda la lógica y los datos viven en Supabase; aquí no hay llaves.
+-->
+<style>
+  :root {
+    --crema: #FAF6EE;
+    --marca: #AE2029;
+    --marca-oscuro: #8A1A22;
+    --tinta: #3C1E19;
+    --gris: #7A6A62;
+    --borde: rgba(60, 30, 25, 0.12);
+    --campo: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--crema);
+    color: var(--tinta);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  main {
+    max-width: 440px;
+    margin: 0 auto;
+    padding: max(28px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom));
+  }
+  .logo { display: block; height: 44px; margin: 4px auto 22px; }
+  h1 { font-size: 28px; line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.02em; text-align: center; }
+  .sub { color: var(--gris); text-align: center; margin: 0 0 26px; font-size: 16px; line-height: 1.45; }
+  .sellos-demo { display: flex; justify-content: center; gap: 8px; margin: 0 0 26px; }
+  .sellos-demo img { width: 30px; height: 30px; }
+  .sellos-demo img.vacio { opacity: 0.22; filter: grayscale(1); }
+
+  form { display: grid; gap: 14px; }
+  label.campo { display: grid; gap: 6px; font-weight: 600; font-size: 15px; }
+  input[type=text], input[type=tel] {
+    font: inherit; font-size: 17px; font-weight: 400;
+    padding: 14px 16px; border-radius: 14px;
+    border: 1px solid var(--borde); background: var(--campo); color: var(--tinta);
+    outline: none; width: 100%;
+  }
+  input:focus { border-color: var(--marca); box-shadow: 0 0 0 3px rgba(174, 32, 41, 0.15); }
+  .trampa { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .aviso {
+    display: flex; gap: 12px; align-items: flex-start;
+    font-size: 14px; line-height: 1.45; color: var(--gris);
+    background: rgba(255,255,255,0.6); border: 1px solid var(--borde);
+    border-radius: 14px; padding: 14px;
+  }
+  .aviso input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--marca); flex: none; }
+  .boton {
+    appearance: none; border: 0; cursor: pointer; width: 100%;
+    font: inherit; font-size: 17px; font-weight: 700;
+    padding: 16px; border-radius: 16px;
+    background: var(--marca); color: #fff;
+    box-shadow: 0 8px 20px rgba(174, 32, 41, 0.25);
+    transition: transform .12s ease, background .2s ease;
+  }
+  .boton:active { transform: scale(0.98); }
+  .boton:disabled { opacity: .55; box-shadow: none; }
+  .error { color: var(--marca); font-size: 14px; min-height: 1em; margin: 0; text-align: center; }
+  .nota {
+    background: #FFF7ED; border: 1px solid #F5D9B8; border-radius: 14px;
+    padding: 14px 16px; font-size: 15px; line-height: 1.45;
+  }
+
+  /* Tarjeta */
+  .tarjeta {
+    border-radius: 18px; overflow: hidden;
+    box-shadow: 0 18px 40px rgba(60, 30, 25, 0.18);
+    margin: 0 0 22px;
+  }
+  .tarjeta .cabeza { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; min-height: 64px; }
+  .tarjeta .cabeza img { height: 30px; }
+  .tarjeta .franja { display: block; width: 100%; aspect-ratio: 375 / 144; object-fit: cover; }
+  .tarjeta .campos { display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px 6px; }
+  .etq { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .val { font-size: 18px; margin-top: 2px; }
+  .der { text-align: right; }
+  .tarjeta .qr { display: flex; justify-content: center; padding: 14px 0 22px; }
+  .tarjeta .qr div { background: #fff; border-radius: 10px; padding: 10px 10px 6px; text-align: center; }
+  .tarjeta .qr svg { display: block; width: 150px; height: 150px; }
+  .tarjeta .qr small { font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: #000; letter-spacing: .06em; }
+
+  .wallet {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: #000; color: #fff; text-decoration: none;
+    font-size: 17px; font-weight: 600; padding: 14px; border-radius: 14px; margin: 0 0 12px;
+  }
+  .wallet svg { width: 26px; height: 26px; }
+  .pista { color: var(--gris); font-size: 14px; line-height: 1.45; text-align: center; margin: 0 0 18px; }
+  .como { font-size: 15px; line-height: 1.5; color: var(--gris); }
+  .salir { background: none; border: 0; color: var(--gris); font: inherit; font-size: 14px; text-decoration: underline; display: block; margin: 18px auto 0; cursor: pointer; }
+  footer { text-align: center; font-size: 13px; color: var(--gris); margin-top: 28px; }
+  footer a { color: inherit; }
+  [hidden] { display: none !important; }
+  .cargando { text-align: center; color: var(--gris); padding: 60px 0; }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="logo.png" alt="carella">
+
+  <p class="cargando" id="cargando">Cargando…</p>
+
+  <!-- Registro -->
+  <section id="registro" hidden>
+    <h1>Tu tarjeta Carella</h1>
+    <p class="sub">Junta un sello en cada compra y llévate una galleta gratis.</p>
+    <div class="sellos-demo" aria-hidden="true">
+      <img src="isotipo.svg" alt=""><img src="isotipo.svg" alt=""><img src="isotipo.svg" alt="">
+      <img class="vacio" src="isotipo.svg" alt=""><img class="vacio" src="isotipo.svg" alt="">
+      <img class="vacio" src="isotipo.svg" alt=""><img class="vacio" src="isotipo.svg" alt="">
+      <img class="vacio" src="isotipo.svg" alt="">
+    </div>
+    <form id="formulario" novalidate>
+      <label class="campo">Tu nombre
+        <input type="text" name="nombre" autocomplete="given-name" maxlength="60" placeholder="Ana" required>
+      </label>
+      <label class="campo">Tu celular
+        <input type="tel" name="telefono" autocomplete="tel-national" inputmode="numeric" placeholder="55 1234 5678" required>
+      </label>
+      <label class="trampa" aria-hidden="true">Sitio <input type="text" name="sitio" tabindex="-1" autocomplete="off"></label>
+      <label class="aviso">
+        <input type="checkbox" name="acepta" required>
+        <span>Acepto que Carella use mi nombre y celular solo para mi tarjeta de sellos: llevar mis visitas, darme mis premios y avisarme de promociones. No los venden ni comparten, y puedo pedir que los borren cuando quiera en cualquier tienda.</span>
+      </label>
+      <p class="error" id="error" role="alert"></p>
+      <button class="boton" id="enviar" type="submit">Quiero mi tarjeta</button>
+    </form>
+    <div class="nota" id="existe" hidden>
+      Ese celular ya tiene una tarjeta Carella. Pide en caja que te la muestren para agregarla a tu celular.
+    </div>
+  </section>
+
+  <!-- Tarjeta -->
+  <section id="vista" hidden>
+    <div class="tarjeta" id="tarjeta">
+      <div class="cabeza">
+        <img id="t-logo" alt="carella">
+        <div class="der"><div class="etq" id="t-enc-e"></div><div class="val" id="t-enc-v"></div></div>
+      </div>
+      <img class="franja" id="t-franja" alt="">
+      <div class="campos">
+        <div><div class="etq" id="t-izq-e"></div><div class="val" id="t-izq-v"></div></div>
+        <div class="der"><div class="etq" id="t-der-e"></div><div class="val" id="t-der-v"></div></div>
+      </div>
+      <div class="qr"><div><span id="t-qr"></span><small id="t-codigo"></small></div></div>
+    </div>
+
+    <a class="wallet" id="wallet" hidden>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2.5" y="4" width="19" height="16" rx="3.5" fill="#fff"/>
+        <rect x="2.5" y="4" width="19" height="5" rx="2.5" fill="#34C759"/>
+        <rect x="2.5" y="7" width="19" height="5" rx="2.5" fill="#FFCC00"/>
+        <rect x="2.5" y="10" width="19" height="5" rx="2.5" fill="#FF3B30"/>
+        <rect x="2.5" y="13" width="19" height="7" rx="3" fill="#fff"/>
+      </svg>
+      Agregar a Apple Wallet
+    </a>
+    <p class="pista" id="pista"></p>
+    <p class="como" id="como"></p>
+    <button class="salir" id="salir" type="button">¿No es tu tarjeta? Salir</button>
+  </section>
+
+  <footer>Carella · <a href="https://instagram.com/carella.mx">@carella.mx</a></footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script>
+  const API = "https://nktrffehtlluiodmoqpl.supabase.co/functions/v1/wallet";
+  const GUARDADO = "carella_tarjeta";
+  const $ = (id) => document.getElementById(id);
+  const esApple = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
+    (/Macintosh/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Edg/.test(navigator.userAgent));
+
+  function leerGuardado() { try { return localStorage.getItem(GUARDADO); } catch { return null; } }
+  function guardar(t) { try { localStorage.setItem(GUARDADO, t); } catch {} }
+  function olvidar() { try { localStorage.removeItem(GUARDADO); } catch {} }
+
+  function mostrar(id) {
+    for (const s of ["cargando", "registro", "vista"]) $(s).hidden = s !== id;
+    // La tarjeta ya trae su logo: arriba sobraría.
+    document.querySelector(".logo").hidden = id === "vista";
+  }
+
+  async function verTarjeta(token) {
+    mostrar("cargando");
+    try {
+      const r = await fetch(`${API}/tarjeta/${encodeURIComponent(token)}`);
+      if (!r.ok) throw new Error();
+      const t = await r.json();
+      const c = t.colores;
+      $("tarjeta").style.background = c.fondo;
+      $("tarjeta").style.color = c.texto;
+      for (const id of ["t-enc-e", "t-izq-e", "t-der-e"]) $(id).style.color = c.etiqueta;
+      const campo = (pref, f) => {
+        $(pref + "-e").textContent = f.valor ? f.etiqueta : "";
+        $(pref + "-v").textContent = f.valor ?? "";
+      };
+      campo("t-enc", t.campos.encabezado);
+      campo("t-izq", t.campos.izquierdo);
+      campo("t-der", t.campos.derecho);
+      if (t.logo) $("t-logo").src = t.logo; else $("t-logo").src = "logo.png";
+      if (t.franja) { $("t-franja").src = t.franja; $("t-franja").hidden = false; } else { $("t-franja").hidden = true; }
+      $("t-franja").alt = t.mecanica === "sellos" ? `${t.sellos} de ${t.meta} sellos` : t.programa;
+      const qr = qrcode(0, "M");
+      qr.addData(t.codigo);
+      qr.make();
+      $("t-qr").innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+      $("t-codigo").textContent = t.codigo;
+      $("como").textContent = t.como_funciona || "";
+
+      if (esApple) {
+        $("wallet").href = t.pase;
+        $("wallet").hidden = false;
+        $("pista").textContent = "Agrégala a Wallet y se actualizará sola con cada sello.";
+      } else {
+        $("wallet").hidden = true;
+        $("pista").textContent = "Muestra este QR al pagar. Guarda esta página en tu pantalla de inicio para tenerla a la mano.";
+      }
+      guardar(token);
+      mostrar("vista");
+    } catch {
+      olvidar();
+      history.replaceState(null, "", location.pathname);
+      mostrar("registro");
+    }
+  }
+
+  $("formulario").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const nombre = String(f.get("nombre") || "").trim();
+    const telefono = String(f.get("telefono") || "").replace(/\D/g, "");
+    $("error").textContent = "";
+    if (!nombre) return ($("error").textContent = "Escribe tu nombre.");
+    if (!(telefono.length === 10 || (telefono.length === 12 && telefono.startsWith("52")))) {
+      return ($("error").textContent = "Escribe tu celular a 10 dígitos.");
+    }
+    if (!f.get("acepta")) return ($("error").textContent = "Necesitamos que aceptes el aviso para darte tu tarjeta.");
+    $("enviar").disabled = true;
+    $("enviar").textContent = "Creando tu tarjeta…";
+    try {
+      const r = await fetch(`${API}/registro`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, telefono, acepta: true, sitio: f.get("sitio") || "" }),
+      });
+      const datos = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(datos.error || "No pudimos crear tu tarjeta. Intenta de nuevo.");
+      if (datos.existe) {
+        $("formulario").hidden = true;
+        $("existe").hidden = false;
+        return;
+      }
+      history.replaceState(null, "", `?t=${encodeURIComponent(datos.token)}`);
+      await verTarjeta(datos.token);
+    } catch (err) {
+      $("error").textContent = err.message || "No pudimos crear tu tarjeta. Intenta de nuevo.";
+    } finally {
+      $("enviar").disabled = false;
+      $("enviar").textContent = "Quiero mi tarjeta";
+    }
+  });
+
+  $("salir").addEventListener("click", () => {
+    olvidar();
+    history.replaceState(null, "", location.pathname);
+    $("formulario").reset();
+    $("formulario").hidden = false;
+    $("existe").hidden = true;
+    mostrar("registro");
+  });
+
+  const token = new URLSearchParams(location.search).get("t") || leerGuardado();
+  if (token) verTarjeta(token); else mostrar("registro");
+</script>
+</body>
+</html>
