@@ -40,7 +40,7 @@
     margin: 0 auto;
     padding: max(28px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom));
   }
-  .logo { display: block; height: 44px; margin: 4px auto 22px; }
+  .logo { display: block; height: 40px; width: auto; margin: 4px auto 22px; }
   h1 { font-size: 28px; line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.02em; text-align: center; }
   .sub { color: var(--gris); text-align: center; margin: 0 0 26px; font-size: 16px; line-height: 1.45; }
   .sellos-demo { display: flex; justify-content: center; gap: 8px; margin: 0 0 26px; }
@@ -87,7 +87,7 @@
     margin: 0 0 22px;
   }
   .tarjeta .cabeza { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; min-height: 64px; }
-  .tarjeta .cabeza img { height: 30px; }
+  .tarjeta .cabeza img { height: 28px; width: auto; }
   .tarjeta .franja { display: block; width: 100%; aspect-ratio: 375 / 144; object-fit: cover; }
   .tarjeta .campos { display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px 6px; }
   .etq { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
@@ -115,7 +115,7 @@
 </head>
 <body>
 <main>
-  <img class="logo" src="logo.png" alt="carella">
+  <img class="logo" src="logotipo.svg" alt="carella">
 
   <p class="cargando" id="cargando">Cargando…</p>
 
@@ -218,7 +218,7 @@
       campo("t-enc", t.campos.encabezado);
       campo("t-izq", t.campos.izquierdo);
       campo("t-der", t.campos.derecho);
-      if (t.logo) $("t-logo").src = t.logo; else $("t-logo").src = "logo.png";
+      if (t.logo) $("t-logo").src = t.logo; else $("t-logo").src = "logotipo.svg";
       if (t.franja) { $("t-franja").src = t.franja; $("t-franja").hidden = false; } else { $("t-franja").hidden = true; }
       $("t-franja").alt = t.mecanica === "sellos" ? `${t.sellos} de ${t.meta} sellos` : t.programa;
       const qr = qrcode(0, "M");

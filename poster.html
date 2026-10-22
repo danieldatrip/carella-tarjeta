@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Póster Tarjeta Carella</title>
+<meta name="robots" content="noindex">
+<!--
+  Póster del mostrador (tamaño carta). Ábrelo y usa Imprimir → Guardar como
+  PDF o directo a la impresora. El QR lleva a https://tarjeta.carella.mx.
+-->
+<style>
+  @page { size: letter; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #e9e3da; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #3C1E19; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .hoja {
+    width: 8.5in; height: 11in; margin: 0.4in auto; background: #FAF6EE;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 0.7in 0.6in 0.55in; box-shadow: 0 10px 30px rgba(0,0,0,.15); overflow: hidden;
+  }
+  @media print { html, body { background: #FAF6EE; } .hoja { margin: 0; box-shadow: none; } }
+  .logo { height: 0.8in; width: auto; }
+  h1 { font-size: 48pt; line-height: 1.02; letter-spacing: -0.02em; text-align: center; margin: 0.2in 0 0.12in; }
+  h1 span { color: #AE2029; }
+  .sub { font-size: 17pt; color: #7A6A62; text-align: center; margin: 0; }
+  .sellos { display: flex; gap: 0.14in; margin: 0.24in 0 0; }
+  .sellos img { width: 0.55in; height: 0.55in; }
+  .sellos img.vacio { opacity: .22; filter: grayscale(1); }
+  .qr { background: #fff; border-radius: 0.28in; padding: 0.26in; border: 3px solid #AE2029; }
+  .qr svg { display: block; width: 3.1in; height: 3.1in; }
+  .escanea { font-size: 22pt; font-weight: 800; color: #AE2029; margin: 0.2in 0 0; text-align: center; }
+  .pasos { display: flex; gap: 0.25in; width: 100%; margin-top: 0.18in; }
+  .paso { flex: 1; background: #fff; border: 1px solid rgba(60,30,25,.12); border-radius: 0.2in; padding: 0.16in 0.16in 0.18in; text-align: center; }
+  .paso b { display: inline-flex; width: 0.38in; height: 0.38in; border-radius: 50%; background: #AE2029; color: #fff; align-items: center; justify-content: center; font-size: 14pt; margin-bottom: 0.06in; }
+  .paso p { margin: 0; font-size: 12.5pt; line-height: 1.3; }
+  .pie { font-size: 11pt; color: #7A6A62; text-align: center; }
+  .pie strong { color: #3C1E19; }
+</style>
+</head>
+<body>
+  <div class="hoja">
+    <img class="logo" src="logotipo.svg" alt="carella">
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <h1>Junta sellos,<br><span>gana galletas</span></h1>
+      <p class="sub">Un sello en cada compra desde $80. Con 8, una galleta gratis.</p>
+      <div class="sellos" aria-hidden="true">
+        <img src="isotipo.svg" alt=""><img src="isotipo.svg" alt=""><img src="isotipo.svg" alt="">
+        <img class="vacio" src="isotipo.svg" alt=""><img class="vacio" src="isotipo.svg" alt="">
+        <img class="vacio" src="isotipo.svg" alt=""><img class="vacio" src="isotipo.svg" alt="">
+        <img class="vacio" src="isotipo.svg" alt="">
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div class="qr" id="qr"></div>
+      <p class="escanea">Escanea con tu cámara</p>
+    </div>
+    <div class="pasos">
+      <div class="paso"><b>1</b><p>Escanea el código con la cámara de tu celular</p></div>
+      <div class="paso"><b>2</b><p>Escribe tu nombre y tu celular</p></div>
+      <div class="paso"><b>3</b><p>Agrégala a Wallet y muéstrala al pagar</p></div>
+    </div>
+    <p class="pie"><strong>tarjeta.carella.mx</strong> · @carella.mx</p>
+  </div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script>
+  const qr = qrcode(0, "H");
+  qr.addData("https://tarjeta.carella.mx");
+  qr.make();
+  document.getElementById("qr").innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+</script>
+</body>
+</html>
